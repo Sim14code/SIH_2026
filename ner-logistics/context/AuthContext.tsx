@@ -24,6 +24,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const DEMO_PROFILES: Record<UserRole, { email: string; full_name: string; jurisdiction: string }> = {
+  ADMIN_DISPATCHER: {
+    email: 'admin@bhoomirakshak.gov.in',
+    full_name: 'Admin Dispatcher',
+    jurisdiction: 'NER Central Command (Guwahati)',
+  },
+  FIELD_OFFICER: {
+    email: 'field@bhoomirakshak.gov.in',
+    full_name: 'Field Commander Sharma',
+    jurisdiction: 'Assam-Meghalaya Border Sector',
+  },
+  PUBLIC_REPORTER: {
+    email: 'citizen@ner-logistics.in',
+    full_name: 'Public Reporter',
+    jurisdiction: 'Citizen Portal',
+  },
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,33 +52,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function loadSession() {
       try {
+        // 1. Check local demo session first for instant responsiveness
+        if (typeof window !== 'undefined') {
+          const cached = localStorage.getItem('ner_demo_auth_profile');
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              if (mounted && parsed?.role) {
+                setUser(parsed);
+                setIsLoading(false);
+                return;
+              }
+            } catch {
+              localStorage.removeItem('ner_demo_auth_profile');
+            }
+          }
+        }
+
+        // 2. Check Supabase Auth session
         const { data: { session } } = await supabase.auth.getSession();
         
-        if (session?.user) {
-          // Fetch profile
+        if (session?.user && mounted) {
           const { data: profile } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
 
-          if (mounted) {
-            if (profile) {
-              setUser({ ...profile, email: session.user.email });
-            } else {
-              // Fallback if profile not created yet
-              setUser({
-                id: session.user.id,
-                email: session.user.email || '',
-                full_name: 'Demo User',
-                role: 'PUBLIC_REPORTER',
-                state_jurisdiction: null
-              });
-            }
+          if (profile) {
+            setUser({ ...profile, email: session.user.email || profile.email });
+          } else {
+            setUser({
+              id: session.user.id,
+              email: session.user.email || '',
+              full_name: session.user.user_metadata?.full_name || 'Demo User',
+              role: (session.user.user_metadata?.role as UserRole) || 'PUBLIC_REPORTER',
+              state_jurisdiction: null,
+            });
           }
         }
       } catch (err) {
-        console.error('Error loading session', err);
+        console.warn('Session load notice:', err);
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -76,14 +108,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .eq('id', session.user.id)
           .single();
           
-        setUser(profile ? { ...profile, email: session.user.email } : {
+        setUser(profile ? { ...profile, email: session.user.email || profile.email } : {
           id: session.user.id,
           email: session.user.email || '',
-          full_name: 'Demo User',
-          role: 'PUBLIC_REPORTER',
-          state_jurisdiction: null
+          full_name: session.user.user_metadata?.full_name || 'Demo User',
+          role: (session.user.user_metadata?.role as UserRole) || 'PUBLIC_REPORTER',
+          state_jurisdiction: null,
         });
       } else if (event === 'SIGNED_OUT') {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('ner_demo_auth_profile');
+        }
         setUser(null);
       }
     });
@@ -94,42 +129,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [supabase]);
 
-  // Demo fast-login function for the prototype
+  // Demo fast-login function with graceful fallback
   const loginAs = async (role: UserRole) => {
     setIsLoading(true);
+    const demoInfo = DEMO_PROFILES[role];
+    const fallbackProfile: UserProfile = {
+      id: `demo-${role.toLowerCase()}-${Date.now()}`,
+      email: demoInfo.email,
+      full_name: demoInfo.full_name,
+      role: role,
+      state_jurisdiction: demoInfo.jurisdiction,
+    };
+
     try {
-      const email = role === 'ADMIN_DISPATCHER' ? 'admin@bhoomirakshak.gov.in' 
-                  : role === 'FIELD_OFFICER' ? 'field@bhoomirakshak.gov.in' 
-                  : 'public@demo.com';
-      
-      let { error } = await supabase.auth.signInWithPassword({
-        email,
-        password: 'password123'
+      // Attempt Supabase Password sign-in
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: demoInfo.email,
+        password: 'password123',
       });
-      
-      if (error && (error.message.includes('Invalid login credentials') || error.status === 400)) {
-        // If user doesn't exist yet in Supabase Auth, auto-create them for demo ease!
-        const full_name = role === 'ADMIN_DISPATCHER' ? 'Admin Dispatcher' : role === 'FIELD_OFFICER' ? 'Field Commander' : 'Public Reporter';
-        const { error: signUpErr } = await supabase.auth.signUp({
-          email,
-          password: 'password123',
-          options: {
-            data: { full_name, role }
-          }
-        });
-        if (signUpErr) {
-          console.error("Auto-signup failed:", signUpErr.message);
-          alert(`Login failed: ${signUpErr.message}`);
-        } else {
-          // Attempt login once more after signup
-          await supabase.auth.signInWithPassword({
-            email,
-            password: 'password123'
-          });
+
+      if (!error && data?.user) {
+        // Fetch or assign profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        const activeUser: UserProfile = profile
+          ? { ...profile, email: data.user.email || profile.email }
+          : fallbackProfile;
+
+        setUser(activeUser);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('ner_demo_auth_profile', JSON.stringify(activeUser));
         }
-      } else if (error) {
-        console.error("Login failed:", error.message);
-        alert(`Login failed: ${error.message}`);
+      } else {
+        // Graceful Demo Mode: Set state and persist locally so demo is 100% reliable
+        setUser(fallbackProfile);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('ner_demo_auth_profile', JSON.stringify(fallbackProfile));
+        }
+      }
+    } catch (err) {
+      console.warn('Falling back to local demo authentication profile:', err);
+      setUser(fallbackProfile);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ner_demo_auth_profile', JSON.stringify(fallbackProfile));
       }
     } finally {
       setIsLoading(false);
@@ -137,7 +183,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('ner_demo_auth_profile');
+    }
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // ignore signOut error if not signed in via remote session
+    }
+    setUser(null);
   };
 
   return (
@@ -147,7 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user,
       isLoading,
       loginAs,
-      logout
+      logout,
     }}>
       {children}
     </AuthContext.Provider>

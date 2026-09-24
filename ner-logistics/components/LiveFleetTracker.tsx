@@ -21,7 +21,6 @@ interface Vehicle {
   geofenceAlert?: boolean;
 }
 
-// Known high-risk zones from our incident data
 const HIGH_RISK_ZONES = [
   { lat: 93.6000, lng: 26.5700, name: 'NH-27 Nagaon Landslide', radiusKm: 15 },
   { lat: 94.1100, lng: 25.6700, name: 'Kohima-Imphal Critical Zone', radiusKm: 20 },
@@ -125,9 +124,7 @@ export default function LiveFleetTracker() {
       })
       .subscribe();
 
-    // Simulate GPS movement every 3 seconds (spec requirement)
     simulatorRef.current = setInterval(async () => {
-      // Small random walk simulation for demo
       const { data } = await supabase.from('vehicles').select('id, current_location, speed_kmph, status');
       if (!data) return;
 
@@ -154,12 +151,12 @@ export default function LiveFleetTracker() {
       supabase.removeChannel(channel);
       if (simulatorRef.current) clearInterval(simulatorRef.current);
     };
-  }, [fetchVehicles, supabase]);
+  }, [supabase, fetchVehicles]);
 
   const alertVehicles = vehicles.filter((v) => v.geofenceAlert);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -168,12 +165,12 @@ export default function LiveFleetTracker() {
           </div>
           <div>
             <h2 className="font-bold text-white text-lg">{t.fleet.title}</h2>
-            <p className="text-slate-400 text-sm">{t.fleet.activeFleets}: {vehicles.length} • GPS update: 3s</p>
+            <p className="text-slate-400 text-sm">{t.fleet.activeFleets}: {vehicles.length} • {t.fleet.gpsUpdate}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-          <span className="text-xs text-emerald-400 font-medium">LIVE</span>
+          <span className="text-xs text-emerald-400 font-medium">{t.stats.live}</span>
         </div>
       </div>
 
@@ -184,7 +181,7 @@ export default function LiveFleetTracker() {
           <div>
             <p className="font-semibold text-red-400 text-sm">{t.fleet.geofenceAlert}</p>
             <p className="text-red-300/70 text-xs mt-1">
-              Vehicles in danger zone: {alertVehicles.map(v => v.vehicle_number).join(', ')}
+              {t.fleet.vehiclesInDanger}: {alertVehicles.map(v => v.vehicle_number).join(', ')}
             </p>
           </div>
         </div>
@@ -212,7 +209,7 @@ export default function LiveFleetTracker() {
                       <AlertTriangle className="w-3.5 h-3.5 text-red-400 animate-pulse" />
                     )}
                     <span className={`text-xs font-semibold ${PRIORITY_COLORS[vehicle.priority_level]}`}>
-                      {vehicle.priority_level}
+                      {vehicle.priority_level === 'HIGH' ? t.fleet.highPriority : vehicle.priority_level === 'MEDIUM' ? t.fleet.mediumPriority : t.fleet.normalPriority}
                     </span>
                   </div>
                   <p className="text-slate-400 text-xs">{vehicle.commodity_type}</p>
@@ -243,7 +240,7 @@ export default function LiveFleetTracker() {
                 </div>
                 <div className="flex items-center gap-2 text-slate-300">
                   <Package className="w-3 h-3 text-purple-400" />
-                  <span>{vehicle.driver_name}</span>
+                  <span><span className="text-slate-500">{t.fleet.driver}:</span> {vehicle.driver_name}</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-300">
                   <Clock className="w-3 h-3 text-slate-400" />

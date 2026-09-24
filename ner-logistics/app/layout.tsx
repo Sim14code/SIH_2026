@@ -7,12 +7,12 @@ import { AuthProvider } from '@/context/AuthContext';
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'NER LogisticsAI — Smart Logistics Intelligence Platform for North Eastern Region',
+  title: 'TerraSafe — Smart Logistics Intelligence Platform for North Eastern Region',
   description:
     'AI-powered logistics and accessibility intelligence platform for North Eastern India. Real-time GIS mapping, dynamic risk routing, fleet telemetry, and offline crowdsourcing for NER corridors.',
   keywords: ['NER logistics', 'Northeast India', 'GIS', 'Supabase', 'landslide risk', 'smart logistics'],
   openGraph: {
-    title: 'NER LogisticsAI',
+    title: 'TerraSafe',
     description: 'Smart Logistics Intelligence for North Eastern Region',
     type: 'website',
   },

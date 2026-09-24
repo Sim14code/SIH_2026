@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { useAuth, UserRole } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { Shield, ShieldAlert, Users, Loader2 } from 'lucide-react';
 
 export default function AuthModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const { loginAs, isLoading } = useAuth();
+  const { t } = useLanguage();
   const [loadingRole, setLoadingRole] = useState<UserRole | null>(null);
 
   if (!isOpen) return null;
@@ -29,8 +31,8 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean, onClos
 
         <div className="text-center mb-6">
           <Shield className="w-12 h-12 text-blue-500 mx-auto mb-3" />
-          <h2 className="text-xl font-bold text-white">Platform Authentication</h2>
-          <p className="text-sm text-slate-400 mt-1">Select a demo role to test RBAC features</p>
+          <h2 className="text-xl font-bold text-white">{t.auth.title}</h2>
+          <p className="text-sm text-slate-400 mt-1">{t.auth.subtitle}</p>
         </div>
 
         <div className="space-y-3">
@@ -42,8 +44,12 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean, onClos
             <div className="flex items-center gap-3">
               <ShieldAlert className="w-5 h-5 text-red-400" />
               <div>
-                <div className="text-white font-bold text-sm group-hover:text-red-400 transition-colors">Admin Dispatcher</div>
-                <div className="text-slate-400 text-xs mt-0.5">Full access, verify/clear incidents</div>
+                <div className="text-white font-bold text-sm group-hover:text-red-400 transition-colors">
+                  {t.auth.adminDispatcher}
+                </div>
+                <div className="text-slate-400 text-xs mt-0.5">
+                  {t.auth.adminDispatcherDesc}
+                </div>
               </div>
             </div>
             {loadingRole === 'ADMIN_DISPATCHER' && <Loader2 className="w-4 h-4 text-red-400 animate-spin" />}
@@ -57,8 +63,12 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean, onClos
             <div className="flex items-center gap-3">
               <Users className="w-5 h-5 text-emerald-400" />
               <div>
-                <div className="text-white font-bold text-sm group-hover:text-emerald-400 transition-colors">Field Officer</div>
-                <div className="text-slate-400 text-xs mt-0.5">Submit incidents, view fleet status</div>
+                <div className="text-white font-bold text-sm group-hover:text-emerald-400 transition-colors">
+                  {t.auth.fieldOfficer}
+                </div>
+                <div className="text-slate-400 text-xs mt-0.5">
+                  {t.auth.fieldOfficerDesc}
+                </div>
               </div>
             </div>
             {loadingRole === 'FIELD_OFFICER' && <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />}
@@ -72,8 +82,12 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean, onClos
             <div className="flex items-center gap-3">
               <Users className="w-5 h-5 text-slate-400" />
               <div>
-                <div className="text-white font-bold text-sm">Public Reporter</div>
-                <div className="text-slate-400 text-xs mt-0.5">Read-only map, report submissions</div>
+                <div className="text-white font-bold text-sm">
+                  {t.auth.publicReporter}
+                </div>
+                <div className="text-slate-400 text-xs mt-0.5">
+                  {t.auth.publicReporterDesc}
+                </div>
               </div>
             </div>
             {loadingRole === 'PUBLIC_REPORTER' && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
@@ -81,7 +95,7 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean, onClos
         </div>
         
         <div className="mt-6 pt-4 border-t border-slate-800 text-center text-xs text-slate-500">
-          Logs in securely via Supabase Auth + RLS
+          {t.auth.securedBadge}
         </div>
       </div>
     </div>

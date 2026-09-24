@@ -40,16 +40,13 @@ interface ParsedIncident {
   created_at: string;
 }
 
-const SUPPLY_HUBS = [
-  { name: 'Guwahati Medical Hub', lat: 26.1445, lng: 91.7362, type: 'Medical' },
-  { name: 'Dimapur FCI Depot', lat: 25.9097, lng: 93.7228, type: 'Food' },
-  { name: 'Silchar Supply Hub', lat: 24.8333, lng: 92.7789, type: 'General' },
-  { name: 'Shillong Cold Chain Hub', lat: 25.5788, lng: 91.8933, type: 'Medical' },
-  { name: 'Aizawl District Hub', lat: 23.7272, lng: 92.7176, type: 'General' },
-  { name: 'Imphal Army Hub', lat: 24.8170, lng: 93.9368, type: 'Military' },
-  { name: 'Tezpur Army Base', lat: 26.6638, lng: 92.8001, type: 'Military' },
-  { name: 'Gangtok Supply Depot', lat: 27.3314, lng: 88.6138, type: 'General' },
-];
+interface SupplyHub {
+  id: string;
+  name: string;
+  type: string;
+  lat: number;
+  lng: number;
+}
 
 // NER corridors as polylines (simplified)
 const NER_CORRIDORS_LINES = [
@@ -95,6 +92,7 @@ function MapRecenter({ center }: { center: [number, number] }) {
 
 export default function MapContainerComponent() {
   const [incidents, setIncidents] = useState<ParsedIncident[]>([]);
+  const [supplyHubs, setSupplyHubs] = useState<SupplyHub[]>([]);
   const [showIncidents, setShowIncidents] = useState(true);
   const [showSupplyHubs, setShowSupplyHubs] = useState(true);
   const [showWeather, setShowWeather] = useState(false);
@@ -145,8 +143,40 @@ export default function MapContainerComponent() {
     }
   }, [supabase]);
 
+  const fetchHubs = useCallback(async () => {
+    const { data, error } = await supabase.from('supply_hubs').select('*');
+    
+    if (error) {
+      console.error('Failed to fetch supply hubs');
+      return;
+    }
+
+    if (data) {
+      const parsedHubs: SupplyHub[] = data.map((hub: Record<string, unknown>) => {
+        let lat = 0;
+        let lng = 0;
+        if (hub.location && typeof hub.location === 'object') {
+          const loc = hub.location as Record<string, unknown>;
+          if (loc.coordinates && Array.isArray(loc.coordinates)) {
+            lng = (loc.coordinates as number[])[0];
+            lat = (loc.coordinates as number[])[1];
+          }
+        }
+        return {
+          id: hub.id as string,
+          name: hub.name as string,
+          type: hub.type as string,
+          lat,
+          lng
+        };
+      });
+      setSupplyHubs(parsedHubs);
+    }
+  }, [supabase]);
+
   useEffect(() => {
     fetchIncidents();
+    fetchHubs();
 
     // Realtime subscription for live updates
     const channel = supabase
@@ -277,9 +307,9 @@ export default function MapContainerComponent() {
         {/* Supply Hubs Layer */}
         {showSupplyHubs && (
           <LayerGroup>
-            {SUPPLY_HUBS.map((hub) => (
+            {supplyHubs.map((hub) => (
               <CircleMarker
-                key={hub.name}
+                key={hub.id || hub.name}
                 center={[hub.lat, hub.lng]}
                 radius={8}
                 fillColor="#3b82f6"

@@ -48,16 +48,14 @@ interface SupplyHub {
   lng: number;
 }
 
-// NER corridors as polylines (simplified)
-const NER_CORRIDORS_LINES = [
-  { name: 'NH-27 Brahmaputra Corridor', points: [[26.1445, 91.7362], [26.3516, 92.6804], [26.7509, 94.2177], [27.4830, 94.9120]] as [number, number][], healthScore: 55 },
-  { name: 'Shillong Highway NH-6', points: [[26.1445, 91.7362], [25.9100, 92.0000], [25.5788, 91.8933]] as [number, number][], healthScore: 45 },
-  { name: 'Barak Valley Route', points: [[25.5788, 91.8933], [24.8333, 92.7789], [23.8315, 91.2868]] as [number, number][], healthScore: 30 },
-  { name: 'Nagaland-Manipur NH-2', points: [[25.9097, 93.7228], [25.6700, 94.1100], [24.8170, 93.9368]] as [number, number][], healthScore: 40 },
-  { name: 'Mizoram Link NH-306', points: [[24.8333, 92.7789], [23.7272, 92.7176]] as [number, number][], healthScore: 60 },
-  { name: 'Arunachal Highway NH-13', points: [[26.6638, 92.8001], [27.0000, 92.6500], [27.2700, 92.4100], [27.5860, 91.8596]] as [number, number][], healthScore: 35 },
-  { name: 'Sikkim Lifeline NH-10', points: [[26.7221, 88.3952], [27.1700, 88.5300], [27.3314, 88.6138]] as [number, number][], healthScore: 50 },
-];
+interface Corridor {
+  name: string;
+  points: [number, number][];
+  routeGeometry?: [number, number][];
+  healthScore: number;
+}
+
+// The corridors state will be populated dynamically from Supabase
 
 function getCorridorColor(score: number): string {
   if (score >= 80) return '#10b981'; // green
@@ -93,6 +91,7 @@ function MapRecenter({ center }: { center: [number, number] }) {
 export default function MapContainerComponent() {
   const [incidents, setIncidents] = useState<ParsedIncident[]>([]);
   const [supplyHubs, setSupplyHubs] = useState<SupplyHub[]>([]);
+  const [corridors, setCorridors] = useState<Corridor[]>([]);
   const [showIncidents, setShowIncidents] = useState(true);
   const [showSupplyHubs, setShowSupplyHubs] = useState(true);
   const [showWeather, setShowWeather] = useState(false);
@@ -174,9 +173,50 @@ export default function MapContainerComponent() {
     }
   }, [supabase]);
 
+  const fetchRoutes = useCallback(async () => {
+    // 1. Fetch Corridors from Database
+    const { data: dbCorridors, error } = await supabase.from('corridors').select('*');
+    if (error || !dbCorridors) {
+      console.error('Failed to fetch corridors from Supabase', error);
+      return;
+    }
+
+    // 2. Fetch OSRM Geometry for each
+    const updatedCorridors = await Promise.all(
+      dbCorridors.map(async (dbCorridor) => {
+        const corridor: Corridor = {
+          name: dbCorridor.name,
+          points: dbCorridor.waypoints as [number, number][],
+          healthScore: dbCorridor.default_health_score
+        };
+
+        try {
+          // OSRM expects coordinates in lng,lat format joined by semicolons
+          const coordString = corridor.points.map(p => `${p[1]},${p[0]}`).join(';');
+          const url = `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('OSRM fetch failed');
+          const data = await res.json();
+          
+          if (data.routes && data.routes.length > 0) {
+            // OSRM returns GeoJSON coordinates as [lng, lat], map back to [lat, lng] for Leaflet
+            const geometry = data.routes[0].geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
+            return { ...corridor, routeGeometry: geometry as [number, number][] };
+          }
+          return corridor;
+        } catch (err) {
+          console.error(`Failed to fetch route for ${corridor.name}:`, err);
+          return corridor; // Fallback to straight lines
+        }
+      })
+    );
+    setCorridors(updatedCorridors);
+  }, [supabase]);
+
   useEffect(() => {
     fetchIncidents();
     fetchHubs();
+    fetchRoutes();
 
     // Realtime subscription for live updates
     const channel = supabase
@@ -241,10 +281,10 @@ export default function MapContainerComponent() {
         />
 
         {/* NER Corridor Road Lines */}
-        {NER_CORRIDORS_LINES.map((corridor) => (
+        {corridors.map((corridor) => (
           <Polyline
             key={corridor.name}
-            positions={corridor.points}
+            positions={corridor.routeGeometry || corridor.points}
             color={getCorridorColor(corridor.healthScore)}
             weight={5}
             opacity={0.85}

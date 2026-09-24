@@ -278,7 +278,7 @@ export default function CrowdsourcingForm() {
             : 'bg-red-500/10 border-red-500/30 text-red-400'
         }`}>
           {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-          {isOnline ? 'Online' : 'Offline Mode'}
+          {isOnline ? t.report.onlineBadge : t.report.offlineBadge}
         </div>
       </div>
 
@@ -288,7 +288,7 @@ export default function CrowdsourcingForm() {
           <div className="flex items-center gap-3">
             <Upload className="w-4 h-4 text-yellow-400" />
             <span className="text-yellow-400 text-sm font-semibold">
-              {pendingCount} report{pendingCount > 1 ? 's' : ''} — {t.report.offlineQueue}
+              {pendingCount} — {t.report.offlineQueue}
             </span>
           </div>
           {isOnline && (
@@ -296,7 +296,7 @@ export default function CrowdsourcingForm() {
               onClick={syncAllPending}
               className="text-xs bg-yellow-500 text-black font-bold px-3 py-1.5 rounded-lg hover:bg-yellow-400 transition-colors"
             >
-              Sync Now
+              {t.report.syncNow}
             </button>
           )}
         </div>
@@ -318,7 +318,7 @@ export default function CrowdsourcingForm() {
       {syncStatus === 'error' && (
         <div className="flex items-center gap-2 text-red-400 text-sm">
           <AlertCircle className="w-4 h-4" />
-          {t.common.error} — Saved to offline queue
+          {t.common.error} — {t.report.offlineQueue}
         </div>
       )}
 
@@ -345,7 +345,7 @@ export default function CrowdsourcingForm() {
               </span>
             )}
             {locationStatus === 'error' && (
-              <span className="text-red-400 text-xs">Location access denied</span>
+              <span className="text-red-400 text-xs">{t.report.locationDenied}</span>
             )}
           </div>
         </div>
@@ -353,13 +353,13 @@ export default function CrowdsourcingForm() {
         {/* Form Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
-            <label className="block text-sm text-slate-400 mb-1">{t.report.incidentType} Title *</label>
+            <label className="block text-sm text-slate-400 mb-1">{t.report.incidentTitle} *</label>
             <input
               type="text"
               required
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value.slice(0, 200) }))}
-              placeholder="e.g., Landslide blocking NH-27"
+              placeholder={t.report.placeholderTitle}
               className="w-full bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-600"
             />
           </div>
@@ -409,7 +409,7 @@ export default function CrowdsourcingForm() {
               required
               value={form.district}
               onChange={(e) => setForm((f) => ({ ...f, district: e.target.value.slice(0, 100) }))}
-              placeholder="e.g., Nagaon"
+              placeholder={t.report.placeholderDistrict}
               className="w-full bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-600"
             />
           </div>
@@ -421,7 +421,7 @@ export default function CrowdsourcingForm() {
               required
               value={form.highway}
               onChange={(e) => setForm((f) => ({ ...f, highway: e.target.value.slice(0, 50) }))}
-              placeholder="e.g., NH-27"
+              placeholder={t.report.placeholderHighway}
               className="w-full bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-600"
             />
           </div>
@@ -432,17 +432,17 @@ export default function CrowdsourcingForm() {
               type="text"
               value={form.reporter_name}
               onChange={(e) => setForm((f) => ({ ...f, reporter_name: e.target.value.slice(0, 100) }))}
-              placeholder="e.g., Ranbir Das / NDRF Unit 3"
+              placeholder={t.report.placeholderReporter}
               className="w-full bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-600"
             />
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-sm text-slate-400 mb-1">Attach Photo Evidence</label>
+            <label className="block text-sm text-slate-400 mb-1">{t.report.photoEvidence}</label>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 cursor-pointer text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors border border-slate-600">
                 <Camera className="w-4 h-4" />
-                Capture / Upload
+                {t.report.captureUpload}
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -463,7 +463,7 @@ export default function CrowdsourcingForm() {
               rows={3}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value.slice(0, 1000) }))}
-              placeholder="Describe the incident in detail..."
+              placeholder={t.report.placeholderDescription}
               className="w-full bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-600 resize-none"
             />
           </div>
@@ -481,7 +481,7 @@ export default function CrowdsourcingForm() {
           ) : (
             <>
               <WifiOff className="w-4 h-4" />
-              Save Offline ({t.report.submit})
+              {t.report.saveOffline}
             </>
           )}
         </button>

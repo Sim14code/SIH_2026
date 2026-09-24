@@ -90,9 +90,9 @@ const WEATHER_STATIONS = [
 ];
 
 function getCorridorColor(score: number): string {
-  if (score >= 80) return '#10b981'; // green
-  if (score >= 50) return '#f59e0b'; // yellow
-  return '#ef4444'; // red
+  if (score >= 80) return '#10b981';
+  if (score >= 50) return '#f59e0b';
+  return '#ef4444';
 }
 
 function getSeverityColor(severity: string, status: string): string {
@@ -172,15 +172,26 @@ export default function MapContainerComponent() {
   const { role } = useAuth();
   const supabase = createClient();
 
-  const fetchIncidents = useCallback(async () => {
-    let query = supabase.from('incidents').select('*').order('created_at', { ascending: false });
-    
-    // PUBLIC_REPORTER only sees VERIFIED incidents
-    if (role === 'PUBLIC_REPORTER') {
-      query = query.eq('status', 'VERIFIED');
-    }
+  const handleUpdateIncidentStatus = async (id: string, status: 'VERIFIED' | 'CLEARED') => {
+    const { error } = await supabase
+      .from('incidents')
+      .update({ status })
+      .eq('id', id);
 
-    const { data, error } = await query;
+    if (error) {
+      console.error('Failed to update incident status:', error);
+    } else {
+      setIncidents((prev) =>
+        prev.map((inc) => (inc.id === id ? { ...inc, status } : inc))
+      );
+    }
+  };
+
+  const fetchIncidents = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('incidents')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Failed to fetch incidents');
@@ -218,23 +229,7 @@ export default function MapContainerComponent() {
       });
       setIncidents(parsed);
     }
-  }, [supabase, role]);
-
-  const handleUpdateIncidentStatus = async (id: string, newStatus: string) => {
-    if (role !== 'ADMIN_DISPATCHER') return;
-    
-    const { error } = await supabase
-      .from('incidents')
-      .update({ status: newStatus })
-      .eq('id', id);
-      
-    if (error) {
-      console.error('Error updating incident:', error);
-      alert('Failed to update incident status.');
-    } else {
-      fetchIncidents(); // Refresh immediately instead of waiting for realtime
-    }
-  };
+  }, [supabase]);
 
   const fetchHubs = useCallback(async () => {
     const { data, error } = await supabase.from('supply_hubs').select('*');
@@ -371,7 +366,6 @@ export default function MapContainerComponent() {
     };
   }, [fetchIncidents, fetchHubs, fetchRoutes, supabase]);
 
-  // Fetch weather data when weather layer is activated
   useEffect(() => {
     if (showWeather && weatherData.length === 0 && !weatherLoading) {
       fetchWeatherData();
@@ -382,7 +376,9 @@ export default function MapContainerComponent() {
     <div className="relative w-full h-full">
       {/* Layer Controls */}
       <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 bg-slate-900/90 backdrop-blur-sm rounded-xl p-3 border border-slate-700/50 shadow-xl min-w-[190px]">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Map Layers</p>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+          {t.map.mapLayers}
+        </p>
         {[
           { key: 'incidents', label: t.map.layerIncidents, value: showIncidents, set: setShowIncidents, color: 'bg-red-500' },
           { key: 'hubs', label: t.map.layerSupplyHubs, value: showSupplyHubs, set: setShowSupplyHubs, color: 'bg-blue-500' },
@@ -406,7 +402,9 @@ export default function MapContainerComponent() {
 
         {/* Legend */}
         <div className="mt-2 pt-2 border-t border-slate-700">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Road Status</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            {t.map.roadStatus}
+          </p>
           {[
             { color: '#10b981', label: t.map.green },
             { color: '#f59e0b', label: t.map.yellow },
@@ -444,7 +442,7 @@ export default function MapContainerComponent() {
             <Popup>
               <div className="font-sans text-sm">
                 <strong>{corridor.name}</strong><br />
-                <span>Health Score: </span>
+                <span>{t.map.healthScore}: </span>
                 <span style={{ color: getCorridorColor(corridor.healthScore), fontWeight: 'bold' }}>
                   {corridor.healthScore}/100
                 </span>
@@ -489,10 +487,10 @@ export default function MapContainerComponent() {
                       </div>
                     )}
                     {inc.estimated_clearance_hours > 0 && (
-                      <p className="text-xs text-gray-500">⏱ ETA Clearance: {inc.estimated_clearance_hours}h</p>
+                      <p className="text-xs text-gray-500">⏱ {t.map.etaClearance}: {inc.estimated_clearance_hours}{t.common.hours}</p>
                     )}
                     {inc.reporter_name && (
-                      <p className="text-xs text-gray-400 mt-1">Reported by: {inc.reporter_name}</p>
+                      <p className="text-xs text-gray-400 mt-1">{t.map.reportedBy}: {inc.reporter_name}</p>
                     )}
                     
                     {role === 'ADMIN_DISPATCHER' && (
@@ -502,7 +500,7 @@ export default function MapContainerComponent() {
                             onClick={(e) => { e.stopPropagation(); handleUpdateIncidentStatus(inc.id, 'VERIFIED'); }}
                             className="flex-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold py-1.5 px-2 rounded transition-colors"
                           >
-                            ✓ Verify
+                            {t.map.verify}
                           </button>
                         )}
                         {inc.status !== 'CLEARED' && (
@@ -510,7 +508,7 @@ export default function MapContainerComponent() {
                             onClick={(e) => { e.stopPropagation(); handleUpdateIncidentStatus(inc.id, 'CLEARED'); }}
                             className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-1.5 px-2 rounded transition-colors"
                           >
-                            ✕ Clear
+                            {t.map.clear}
                           </button>
                         )}
                       </div>
@@ -539,7 +537,7 @@ export default function MapContainerComponent() {
                 <Popup>
                   <div className="font-sans text-sm">
                     <strong>📦 {hub.name}</strong><br />
-                    <span className="text-xs text-gray-500">Type: {hub.type} Hub</span>
+                    <span className="text-xs text-gray-500">{t.map.hubType}: {hub.type}</span>
                   </div>
                 </Popup>
               </CircleMarker>
@@ -588,32 +586,32 @@ export default function MapContainerComponent() {
 
                       <div className="space-y-1.5 text-xs text-slate-700">
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">🌧️ 24h Rainfall:</span>
+                          <span className="text-slate-500">🌧️ {t.map.rain24h}:</span>
                           <strong className="font-semibold text-slate-900">{st.precip_mm_24h.toFixed(1)} mm</strong>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">⚡ Peak Hourly:</span>
-                          <span className="font-medium text-slate-800">{st.peak_hr_rainfall_mm.toFixed(1)} mm/hr</span>
+                          <span className="text-slate-500">⚡ {t.map.peakHourly}:</span>
+                          <span className="font-medium text-slate-800">{st.peak_hr_rainfall_mm.toFixed(1)} mm/{t.common.hours}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">💧 Soil Moisture:</span>
+                          <span className="text-slate-500">💧 {t.map.soilMoisture}:</span>
                           <span className="font-medium text-slate-800">{(st.soil_moisture * 100).toFixed(1)}%</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">💨 Max Wind:</span>
-                          <span className="font-medium text-slate-800">{st.wind_max_kmph.toFixed(1)} km/h</span>
+                          <span className="text-slate-500">💨 {t.map.maxWind}:</span>
+                          <span className="font-medium text-slate-800">{st.wind_max_kmph.toFixed(1)} {t.common.kmph}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">🌡️ Temperature:</span>
+                          <span className="text-slate-500">🌡️ {t.map.temperature}:</span>
                           <span className="font-medium text-slate-800">{st.temp_min_c.toFixed(0)}°C – {st.temp_max_c.toFixed(0)}°C</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">🌫️ Rel. Humidity:</span>
+                          <span className="text-slate-500">🌫️ {t.map.humidity}:</span>
                           <span className="font-medium text-slate-800">{st.mean_humidity_pct.toFixed(0)}%</span>
                         </div>
                         {st.is_monsoon && (
                           <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center gap-1.5 text-cyan-700 text-[11px] font-semibold">
-                            <span>☔</span> Active Monsoon Season
+                            <span>☔</span> {t.map.monsoonAlert}
                           </div>
                         )}
                       </div>

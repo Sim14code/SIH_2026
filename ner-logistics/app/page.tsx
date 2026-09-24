@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   MapIcon,
   TrendingUp,
@@ -21,16 +21,8 @@ import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import AuthModal from '@/components/AuthModal';
-import { useEffect } from 'react';
 
 type Tab = 'map' | 'routing' | 'fleet' | 'report';
-
-const STATS = [
-  { icon: Mountain, label: 'Active Incidents', value: '13', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
-  { icon: Truck, label: 'Fleet Vehicles', value: '8', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-  { icon: CloudRain, label: 'Corridors Monitored', value: '7', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
-  { icon: Shield, label: 'States Covered', value: '8', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
-];
 
 export default function HomePage() {
   const { t } = useLanguage();
@@ -55,6 +47,13 @@ export default function HomePage() {
     return true; // ADMIN_DISPATCHER sees all
   });
 
+  const stats = [
+    { icon: Mountain, label: t.stats.activeIncidents, value: '13', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
+    { icon: Truck, label: t.stats.fleetVehicles, value: '8', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+    { icon: CloudRain, label: t.stats.corridorsMonitored, value: '7', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
+    { icon: Shield, label: t.stats.statesCovered, value: '8', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+  ];
+
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col">
       {/* Top Navigation Bar */}
@@ -74,7 +73,7 @@ export default function HomePage() {
                   {t.appName}
                 </h1>
                 <p className="text-slate-500 text-xs hidden sm:block">
-                  SIH 2026 · NER Infrastructure
+                  {t.stats.sihTagline}
                 </p>
               </div>
             </div>
@@ -83,22 +82,24 @@ export default function HomePage() {
             <div className="flex items-center gap-4">
               <div className="hidden md:flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1.5">
                 <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-xs text-emerald-400 font-semibold tracking-wider">LIVE</span>
+                <span className="text-xs text-emerald-400 font-semibold tracking-wider">{t.stats.live}</span>
               </div>
               
               {isAuthenticated ? (
                 <div className="flex items-center gap-3">
                   <div className="text-right hidden sm:block">
                     <div className="text-sm font-bold text-white">{user?.full_name}</div>
-                    <div className="text-xs text-emerald-400">{role.replace('_', ' ')}</div>
+                    <div className="text-xs text-emerald-400">
+                      {role === 'ADMIN_DISPATCHER' ? t.auth.adminDispatcher : role === 'FIELD_OFFICER' ? t.auth.fieldOfficer : t.auth.publicReporter}
+                    </div>
                   </div>
                   <button onClick={logout} className="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg border border-slate-700 transition-colors">
-                    Logout
+                    {t.auth.logout}
                   </button>
                 </div>
               ) : (
                 <button onClick={() => setIsAuthModalOpen(true)} className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg font-semibold shadow-lg shadow-blue-500/20 transition-all">
-                  Login
+                  {t.auth.login}
                 </button>
               )}
 
@@ -114,12 +115,12 @@ export default function HomePage() {
       <main className="flex-1 max-w-screen-2xl mx-auto w-full px-4 sm:px-6 py-6">
         {/* Hero Stats Bar */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          {STATS.map(({ icon: Icon, label, value, color, bg }) => (
+          {stats.map(({ icon: Icon, label, value, color, bg }) => (
             <div
               key={label}
               className={`flex items-center gap-3 rounded-xl border p-4 ${bg} transition-all duration-200 hover:scale-105`}
             >
-              <div className={`p-2 rounded-lg bg-slate-900/50`}>
+              <div className="p-2 rounded-lg bg-slate-900/50">
                 <Icon className={`w-4 h-4 ${color}`} />
               </div>
               <div>
@@ -198,7 +199,7 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-slate-800/50 py-4 text-center text-xs text-slate-600">
-        <p>NER LogisticsAI · SIH 2026 · Powered by Supabase + Next.js + PostGIS</p>
+        <p>{t.stats.footer}</p>
       </footer>
     </div>
   );

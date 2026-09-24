@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import {
   TrendingUp, AlertTriangle, Clock, Navigation, ChevronDown,
   BarChart3, Brain, CloudRain, Wind, Droplets, Mountain,
@@ -251,6 +252,22 @@ function RouteCard({ prediction, isRecommended }: { prediction: RoutePrediction;
 // ─────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────
+function deg2rad(deg: number) {
+  return deg * (Math.PI/180);
+}
+
+function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371;
+  const dLat = deg2rad(lat2-lat1);
+  const dLon = deg2rad(lon2-lon1);
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
 export default function RiskRouteEngine() {
   const { t } = useLanguage();
   const [selectedCorridorId, setSelectedCorridorId] = useState(NER_CORRIDORS_GEO[0].id);
@@ -259,21 +276,63 @@ export default function RiskRouteEngine() {
   const [error, setError] = useState<string | null>(null);
   const [lastAnalyzed, setLastAnalyzed] = useState<string | null>(null);
 
+  const supabase = createClient();
+  const [dbCorridors, setDbCorridors] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchDbCorridors = async () => {
+      const { data, error } = await supabase.from('corridors').select('*');
+      if (data && !error) {
+        setDbCorridors(data);
+      }
+    };
+    fetchDbCorridors();
+  }, [supabase]);
+
   const handleAnalyze = useCallback(async () => {
-    const corridor = NER_CORRIDORS_GEO.find((c: Corridor) => c.id === selectedCorridorId);
-    if (!corridor) return;
+    const staticCorridor = NER_CORRIDORS_GEO.find((c: Corridor) => c.id === selectedCorridorId);
+    const dynamicCorridor = dbCorridors.find((c) => c.id === selectedCorridorId);
+    if (!staticCorridor && !dynamicCorridor) return;
 
     setIsLoading(true);
     setError(null);
     setPredictions([]);
 
     try {
-      const body = {
-        routes: [
-          { name: corridor.primary.name,   segments: corridor.primary.segments   },
-          { name: corridor.alternate.name, segments: corridor.alternate.segments },
-        ],
-      };
+      let body: any = {};
+      if (staticCorridor) {
+        body = {
+          routes: [
+            { name: staticCorridor.primary.name,   segments: staticCorridor.primary.segments   },
+            { name: staticCorridor.alternate.name, segments: staticCorridor.alternate.segments },
+          ],
+        };
+      } else if (dynamicCorridor) {
+        const segments = [];
+        const wp = dynamicCorridor.waypoints;
+        for (let i = 1; i < wp.length; i++) {
+          const lat1 = wp[i-1][0];
+          const lng1 = wp[i-1][1];
+          const lat2 = wp[i][0];
+          const lng2 = wp[i][1];
+          const dist = getDistanceFromLatLonInKm(lat1, lng1, lat2, lng2);
+          
+          segments.push({
+            name: `Segment ${i}`,
+            waypoint: `WP-${i}`, 
+            distanceKm: Math.round(dist * 10) / 10,
+            lat: lat2,
+            lng: lng2,
+            slope: 5,
+            elevation_m: 500,
+          });
+        }
+        body = {
+          routes: [
+            { name: dynamicCorridor.name, segments },
+          ]
+        };
+      }
 
       const res = await fetch('/api/risk-predict', {
         method: 'POST',
@@ -294,7 +353,7 @@ export default function RiskRouteEngine() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedCorridorId]);
+  }, [selectedCorridorId, dbCorridors]);
 
   const recommendedIndex = predictions.length === 2
     ? (predictions[0].overall_risk_probability <= predictions[1].overall_risk_probability ? 0 : 1)
@@ -342,9 +401,18 @@ export default function RiskRouteEngine() {
             onChange={(e) => { setSelectedCorridorId(e.target.value); setPredictions([]); }}
             className="w-full bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
           >
-            {NER_CORRIDORS_GEO.map((c: Corridor) => (
-              <option key={c.id} value={c.id}>{c.label}</option>
-            ))}
+            <optgroup label="Static Corridors">
+              {NER_CORRIDORS_GEO.map((c: Corridor) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </optgroup>
+            {dbCorridors.length > 0 && (
+              <optgroup label="Dynamic Corridors (Supabase)">
+                {dbCorridors.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
         <div className="flex items-end">

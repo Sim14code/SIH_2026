@@ -21,6 +21,7 @@ interface Incident {
   reporter_name: string;
   description: string;
   created_at: string;
+  image_url?: string;
 }
 
 interface ParsedIncident {
@@ -38,6 +39,7 @@ interface ParsedIncident {
   reporter_name: string;
   description: string;
   created_at: string;
+  image_url?: string;
 }
 
 interface SupplyHub {
@@ -136,6 +138,7 @@ export default function MapContainerComponent() {
           reporter_name: inc.reporter_name as string,
           description: inc.description as string,
           created_at: inc.created_at as string,
+          image_url: inc.image_url as string | undefined,
         };
       });
       setIncidents(parsed);
@@ -331,6 +334,11 @@ export default function MapContainerComponent() {
                       {inc.severity} · {inc.status}
                     </div>
                     <p className="text-gray-700 text-xs mb-1">{inc.description}</p>
+                    {inc.image_url && (
+                      <div className="mt-2 mb-2">
+                        <img src={inc.image_url} alt="Incident Evidence" className="w-full h-32 object-cover rounded-md border border-slate-200" />
+                      </div>
+                    )}
                     {inc.estimated_clearance_hours > 0 && (
                       <p className="text-xs text-gray-500">⏱ ETA Clearance: {inc.estimated_clearance_hours}h</p>
                     )}

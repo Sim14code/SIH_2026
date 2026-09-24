@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useLanguage } from '@/context/LanguageContext';
-import { MapPin, Upload, Wifi, WifiOff, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { MapPin, Upload, Wifi, WifiOff, CheckCircle, AlertCircle, Loader2, Camera } from 'lucide-react';
 
 interface OfflineReport {
   id: string;
@@ -18,6 +18,7 @@ interface OfflineReport {
   lat: number;
   lng: number;
   created_at: string;
+  photoDataUrl?: string;
 }
 
 const DB_NAME = 'ner_logistics_offline';
@@ -89,6 +90,7 @@ export default function CrowdsourcingForm() {
     reporter_name: '',
     lat: 0,
     lng: 0,
+    photoDataUrl: '',
   });
 
   // Monitor online status
@@ -137,7 +139,7 @@ export default function CrowdsourcingForm() {
     if (!isOnline) {
       await saveToIndexedDB(report);
       await loadPendingCount();
-      setForm({ title: '', state: 'Assam', district: '', highway: '', incident_type: 'LANDSLIDE', severity: 'MODERATE', description: '', reporter_name: '', lat: 0, lng: 0 });
+      setForm({ title: '', state: 'Assam', district: '', highway: '', incident_type: 'LANDSLIDE', severity: 'MODERATE', description: '', reporter_name: '', lat: 0, lng: 0, photoDataUrl: '' });
       setSyncStatus('idle');
       return;
     }
@@ -145,8 +147,41 @@ export default function CrowdsourcingForm() {
     await syncReport(report);
   };
 
+  const handleImageCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setForm((f) => ({ ...f, photoDataUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const syncReport = async (report: OfflineReport) => {
     setSyncStatus('syncing');
+
+    let imageUrl = null;
+    if (report.photoDataUrl) {
+      try {
+        const response = await fetch(report.photoDataUrl);
+        const blob = await response.blob();
+        const filename = `${report.id}-${Date.now()}.jpg`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('incident-evidence')
+          .upload(filename, blob, { contentType: blob.type });
+
+        if (!uploadError && uploadData) {
+          const { data: publicUrlData } = supabase.storage
+            .from('incident-evidence')
+            .getPublicUrl(filename);
+          imageUrl = publicUrlData.publicUrl;
+        }
+      } catch (err) {
+        console.error("Image upload failed", err);
+      }
+    }
+
     const { error } = await supabase.from('incidents').insert({
       title: report.title,
       state: report.state,
@@ -158,6 +193,7 @@ export default function CrowdsourcingForm() {
       reporter_name: report.reporter_name,
       location: `SRID=4326;POINT(${report.lng} ${report.lat})`,
       status: 'ACTIVE',
+      image_url: imageUrl,
     });
 
     if (error) {
@@ -166,7 +202,7 @@ export default function CrowdsourcingForm() {
       await loadPendingCount();
     } else {
       setSyncStatus('success');
-      setForm({ title: '', state: 'Assam', district: '', highway: '', incident_type: 'LANDSLIDE', severity: 'MODERATE', description: '', reporter_name: '', lat: 0, lng: 0 });
+      setForm({ title: '', state: 'Assam', district: '', highway: '', incident_type: 'LANDSLIDE', severity: 'MODERATE', description: '', reporter_name: '', lat: 0, lng: 0, photoDataUrl: '' });
       setTimeout(() => setSyncStatus('idle'), 3000);
     }
   };
@@ -177,6 +213,27 @@ export default function CrowdsourcingForm() {
     const reports = await getPendingReports();
     let success = 0;
     for (const report of reports) {
+      let imageUrl = null;
+      if (report.photoDataUrl) {
+        try {
+          const response = await fetch(report.photoDataUrl);
+          const blob = await response.blob();
+          const filename = `${report.id}-${Date.now()}.jpg`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('incident-evidence')
+            .upload(filename, blob, { contentType: blob.type });
+
+          if (!uploadError && uploadData) {
+            const { data: publicUrlData } = supabase.storage
+              .from('incident-evidence')
+              .getPublicUrl(filename);
+            imageUrl = publicUrlData.publicUrl;
+          }
+        } catch (err) {
+          console.error("Image upload failed", err);
+        }
+      }
+
       const { error } = await supabase.from('incidents').insert({
         title: report.title,
         state: report.state,
@@ -188,6 +245,7 @@ export default function CrowdsourcingForm() {
         reporter_name: report.reporter_name,
         location: `SRID=4326;POINT(${report.lng} ${report.lat})`,
         status: 'ACTIVE',
+        image_url: imageUrl,
       });
       if (!error) {
         await deleteFromIndexedDB(report.id);
@@ -377,6 +435,26 @@ export default function CrowdsourcingForm() {
               placeholder="e.g., Ranbir Das / NDRF Unit 3"
               className="w-full bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-600"
             />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-sm text-slate-400 mb-1">Attach Photo Evidence</label>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 cursor-pointer text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors border border-slate-600">
+                <Camera className="w-4 h-4" />
+                Capture / Upload
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment" 
+                  onChange={handleImageCapture} 
+                  className="hidden" 
+                />
+              </label>
+              {form.photoDataUrl && (
+                <img src={form.photoDataUrl} alt="Preview" className="h-12 w-12 object-cover rounded shadow border border-slate-600" />
+              )}
+            </div>
           </div>
 
           <div className="sm:col-span-2">

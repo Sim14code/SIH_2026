@@ -102,13 +102,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   : role === 'FIELD_OFFICER' ? 'field@bhoomirakshak.gov.in' 
                   : 'public@demo.com';
       
-      const { error } = await supabase.auth.signInWithPassword({
+      let { error } = await supabase.auth.signInWithPassword({
         email,
         password: 'password123'
       });
       
-      if (error) {
-        console.error("Login failed (are demo users created?):", error.message);
+      if (error && (error.message.includes('Invalid login credentials') || error.status === 400)) {
+        // If user doesn't exist yet in Supabase Auth, auto-create them for demo ease!
+        const full_name = role === 'ADMIN_DISPATCHER' ? 'Admin Dispatcher' : role === 'FIELD_OFFICER' ? 'Field Commander' : 'Public Reporter';
+        const { error: signUpErr } = await supabase.auth.signUp({
+          email,
+          password: 'password123',
+          options: {
+            data: { full_name, role }
+          }
+        });
+        if (signUpErr) {
+          console.error("Auto-signup failed:", signUpErr.message);
+          alert(`Login failed: ${signUpErr.message}`);
+        } else {
+          // Attempt login once more after signup
+          await supabase.auth.signInWithPassword({
+            email,
+            password: 'password123'
+          });
+        }
+      } else if (error) {
+        console.error("Login failed:", error.message);
+        alert(`Login failed: ${error.message}`);
       }
     } finally {
       setIsLoading(false);

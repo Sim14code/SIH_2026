@@ -347,9 +347,9 @@ export default function RiskRouteEngine() {
     }
   }, [selectedCorridorId, dbCorridors]);
 
-  const recommendedIndex = predictions.length === 2
+  const recommendedIndex = predictions.length > 1
     ? (predictions[0].overall_risk_probability <= predictions[1].overall_risk_probability ? 0 : 1)
-    : -1;
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -445,15 +445,15 @@ export default function RiskRouteEngine() {
       )}
 
       {/* Results */}
-      {predictions.length === 2 && !isLoading && (
+      {predictions.length > 0 && !isLoading && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Summary comparison */}
           <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <Navigation className="w-4 h-4 text-emerald-400" />
-              <span className="font-semibold text-white text-sm">Route Comparison</span>
+              <span className="font-semibold text-white text-sm">Route Analysis</span>
             </div>
-            <div className="grid grid-cols-2 gap-4 text-xs">
+            <div className={`grid grid-cols-1 ${predictions.length > 1 ? 'md:grid-cols-2' : ''} gap-4 text-xs`}>
               {predictions.map((p, i) => (
                 <div key={i} className={`flex items-start gap-2 ${i === recommendedIndex ? 'text-emerald-300' : 'text-slate-400'}`}>
                   {i === recommendedIndex ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" /> : <span className="w-3.5" />}
@@ -466,9 +466,9 @@ export default function RiskRouteEngine() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className={`grid grid-cols-1 ${predictions.length > 1 ? 'lg:grid-cols-2' : ''} gap-6`}>
             {predictions.map((p, i) => (
-              <RouteCard key={i} prediction={p} isRecommended={i === recommendedIndex} />
+              <RouteCard key={i} prediction={p} isRecommended={predictions.length > 1 ? i === recommendedIndex : true} />
             ))}
           </div>
 

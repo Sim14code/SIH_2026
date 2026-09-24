@@ -5,6 +5,7 @@ import L from 'leaflet';
 import { MapContainer, TileLayer, CircleMarker, Marker, Circle, Popup, Polyline, LayerGroup, useMap } from 'react-leaflet';
 import { createClient } from '@/lib/supabase/client';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
 import 'leaflet/dist/leaflet.css';
 
 interface Incident {
@@ -168,13 +169,18 @@ export default function MapContainerComponent() {
   const [showWeather, setShowWeather] = useState(false);
 
   const { t } = useLanguage();
+  const { role } = useAuth();
   const supabase = createClient();
 
   const fetchIncidents = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('incidents')
-      .select('*')
-      .order('created_at', { ascending: false });
+    let query = supabase.from('incidents').select('*').order('created_at', { ascending: false });
+    
+    // PUBLIC_REPORTER only sees VERIFIED incidents
+    if (role === 'PUBLIC_REPORTER') {
+      query = query.eq('status', 'VERIFIED');
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Failed to fetch incidents');
@@ -212,7 +218,23 @@ export default function MapContainerComponent() {
       });
       setIncidents(parsed);
     }
-  }, [supabase]);
+  }, [supabase, role]);
+
+  const handleUpdateIncidentStatus = async (id: string, newStatus: string) => {
+    if (role !== 'ADMIN_DISPATCHER') return;
+    
+    const { error } = await supabase
+      .from('incidents')
+      .update({ status: newStatus })
+      .eq('id', id);
+      
+    if (error) {
+      console.error('Error updating incident:', error);
+      alert('Failed to update incident status.');
+    } else {
+      fetchIncidents(); // Refresh immediately instead of waiting for realtime
+    }
+  };
 
   const fetchHubs = useCallback(async () => {
     const { data, error } = await supabase.from('supply_hubs').select('*');
@@ -471,6 +493,27 @@ export default function MapContainerComponent() {
                     )}
                     {inc.reporter_name && (
                       <p className="text-xs text-gray-400 mt-1">Reported by: {inc.reporter_name}</p>
+                    )}
+                    
+                    {role === 'ADMIN_DISPATCHER' && (
+                      <div className="mt-3 flex gap-2 pt-2 border-t border-gray-200">
+                        {inc.status === 'ACTIVE' && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleUpdateIncidentStatus(inc.id, 'VERIFIED'); }}
+                            className="flex-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold py-1.5 px-2 rounded transition-colors"
+                          >
+                            ✓ Verify
+                          </button>
+                        )}
+                        {inc.status !== 'CLEARED' && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleUpdateIncidentStatus(inc.id, 'CLEARED'); }}
+                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-1.5 px-2 rounded transition-colors"
+                          >
+                            ✕ Clear
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </Popup>

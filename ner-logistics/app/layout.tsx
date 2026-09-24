@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { LanguageProvider } from '@/context/LanguageContext';
+import { AuthProvider } from '@/context/AuthContext';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
 
@@ -28,9 +29,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* TODO(security): Add CSP nonce-based policy before production deployment */}
       </head>
       <body className={`${inter.className} bg-slate-950 text-slate-100 antialiased`}>
-        <LanguageProvider>
-          {children}
-        </LanguageProvider>
+        <AuthProvider>
+          <LanguageProvider>
+            {children}
+          </LanguageProvider>
+        </AuthProvider>
       </body>
     </html>
   );

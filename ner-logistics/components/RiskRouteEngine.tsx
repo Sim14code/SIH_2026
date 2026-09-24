@@ -8,7 +8,6 @@ import {
   RefreshCw, CheckCircle, Loader2, Thermometer, Activity,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
-import { NER_CORRIDORS_GEO, type Corridor } from '@/lib/corridors';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -270,7 +269,7 @@ function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon
 
 export default function RiskRouteEngine() {
   const { t } = useLanguage();
-  const [selectedCorridorId, setSelectedCorridorId] = useState(NER_CORRIDORS_GEO[0].id);
+  const [selectedCorridorId, setSelectedCorridorId] = useState('');
   const [predictions, setPredictions] = useState<RoutePrediction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -282,57 +281,50 @@ export default function RiskRouteEngine() {
   useEffect(() => {
     const fetchDbCorridors = async () => {
       const { data, error } = await supabase.from('corridors').select('*');
-      if (data && !error) {
+      if (data && !error && data.length > 0) {
         setDbCorridors(data);
+        if (!selectedCorridorId) {
+          setSelectedCorridorId(data[0].id);
+        }
       }
     };
     fetchDbCorridors();
-  }, [supabase]);
+  }, [supabase, selectedCorridorId]);
 
   const handleAnalyze = useCallback(async () => {
-    const staticCorridor = NER_CORRIDORS_GEO.find((c: Corridor) => c.id === selectedCorridorId);
     const dynamicCorridor = dbCorridors.find((c) => c.id === selectedCorridorId);
-    if (!staticCorridor && !dynamicCorridor) return;
+    if (!dynamicCorridor) return;
 
     setIsLoading(true);
     setError(null);
     setPredictions([]);
 
     try {
-      let body: any = {};
-      if (staticCorridor) {
-        body = {
-          routes: [
-            { name: staticCorridor.primary.name,   segments: staticCorridor.primary.segments   },
-            { name: staticCorridor.alternate.name, segments: staticCorridor.alternate.segments },
-          ],
-        };
-      } else if (dynamicCorridor) {
-        const segments = [];
-        const wp = dynamicCorridor.waypoints;
-        for (let i = 1; i < wp.length; i++) {
-          const lat1 = wp[i-1][0];
-          const lng1 = wp[i-1][1];
-          const lat2 = wp[i][0];
-          const lng2 = wp[i][1];
-          const dist = getDistanceFromLatLonInKm(lat1, lng1, lat2, lng2);
-          
-          segments.push({
-            name: `Segment ${i}`,
-            waypoint: `WP-${i}`, 
-            distanceKm: Math.round(dist * 10) / 10,
-            lat: lat2,
-            lng: lng2,
-            slope: 5,
-            elevation_m: 500,
-          });
-        }
-        body = {
-          routes: [
-            { name: dynamicCorridor.name, segments },
-          ]
-        };
+      const segments = [];
+      const wp = dynamicCorridor.waypoints;
+      for (let i = 1; i < wp.length; i++) {
+        const lat1 = wp[i-1][0];
+        const lng1 = wp[i-1][1];
+        const lat2 = wp[i][0];
+        const lng2 = wp[i][1];
+        const dist = getDistanceFromLatLonInKm(lat1, lng1, lat2, lng2);
+        
+        segments.push({
+          name: `Segment ${i}`,
+          waypoint: `WP-${i}`, 
+          distanceKm: Math.round(dist * 10) / 10,
+          lat: lat2,
+          lng: lng2,
+          slope: 5,
+          elevation_m: 500,
+        });
       }
+      
+      const body = {
+        routes: [
+          { name: dynamicCorridor.name, segments },
+        ]
+      };
 
       const res = await fetch('/api/risk-predict', {
         method: 'POST',
@@ -401,18 +393,10 @@ export default function RiskRouteEngine() {
             onChange={(e) => { setSelectedCorridorId(e.target.value); setPredictions([]); }}
             className="w-full bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
           >
-            <optgroup label="Static Corridors">
-              {NER_CORRIDORS_GEO.map((c: Corridor) => (
-                <option key={c.id} value={c.id}>{c.label}</option>
-              ))}
-            </optgroup>
-            {dbCorridors.length > 0 && (
-              <optgroup label="Dynamic Corridors (Supabase)">
-                {dbCorridors.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </optgroup>
-            )}
+            <option value="" disabled>Select a route from database...</option>
+            {dbCorridors.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
           </select>
         </div>
         <div className="flex items-end">

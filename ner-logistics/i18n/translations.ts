@@ -187,7 +187,7 @@ export interface Translations {
 
 export const translations: Record<Language, Translations> = {
   en: {
-    appName: 'NER LogisticsAI',
+    appName: 'TerraSafe',
     appSubtitle: 'Smart Logistics & Accessibility Intelligence Platform for North Eastern Region',
     stats: {
       activeIncidents: 'Active Incidents',
@@ -196,7 +196,7 @@ export const translations: Record<Language, Translations> = {
       statesCovered: 'States Covered',
       live: 'LIVE',
       sihTagline: 'SIH 2026 · NER Infrastructure',
-      footer: 'NER LogisticsAI · SIH 2026 · Powered by Supabase + Next.js + PostGIS',
+      footer: 'TerraSafe · SIH 2026 · Powered by Supabase + Next.js + PostGIS',
     },
     nav: {
       map: 'GIS Map',
@@ -369,7 +369,7 @@ export const translations: Record<Language, Translations> = {
   },
 
   hi: {
-    appName: 'NER लॉजिस्टिक्सAI',
+    appName: 'TerraSafe',
     appSubtitle: 'पूर्वोत्तर क्षेत्र के लिए स्मार्ट लॉजिस्टिक्स एवं सुगम्यता बुद्धिमत्ता मंच',
     stats: {
       activeIncidents: 'सक्रिय घटनाएं',
@@ -378,7 +378,7 @@ export const translations: Record<Language, Translations> = {
       statesCovered: 'कवर किए गए राज्य',
       live: 'लाइव',
       sihTagline: 'SIH 2026 · पूर्वोत्तर अवसंरचना',
-      footer: 'NER लॉजिस्टिक्सAI · SIH 2026 · सुपबेस + नेक्स्ट.जेएस + पोस्टजीआईएस द्वारा संचालित',
+      footer: 'TerraSafe · SIH 2026 · सुपबेस + नेक्स्ट.जेएस + पोस्टजीआईएस द्वारा संचालित',
     },
     nav: {
       map: 'जीआईएस मानचित्र',
@@ -551,7 +551,7 @@ export const translations: Record<Language, Translations> = {
   },
 
   as: {
-    appName: 'NER লজিষ্টিক্সAI',
+    appName: 'TerraSafe',
     appSubtitle: 'উত্তৰ-পূৰ্বাঞ্চলৰ বাবে স্মাৰ্ট লজিষ্টিক্স আৰু সুলভতা বুদ্ধিমত্তা মঞ্চ',
     stats: {
       activeIncidents: 'সক্ৰিয় ঘটনাসমূহ',
@@ -560,7 +560,7 @@ export const translations: Record<Language, Translations> = {
       statesCovered: 'আৱৰা ৰাজ্যসমূহ',
       live: 'লাইভ',
       sihTagline: 'SIH 2026 · উত্তৰ-পূব আন্তঃগাঁথনি',
-      footer: 'NER লজিষ্টিক্সAI · SIH 2026 · চুপাবেচ + নেক্সট.জেএছ + পোষ্টজিআইএছ দ্বাৰা পৰিচালিত',
+      footer: 'TerraSafe · SIH 2026 · চুপাবেচ + নেক্সট.জেএছ + পোষ্টজিআইএছ দ্বাৰা পৰিচালিত',
     },
     nav: {
       map: 'জিআইএছ মানচিত্ৰ',
@@ -733,7 +733,7 @@ export const translations: Record<Language, Translations> = {
   },
 
   bn: {
-    appName: 'NER লজিস্টিক্সAI',
+    appName: 'TerraSafe',
     appSubtitle: 'উত্তর-পূর্বাঞ্চলের জন্য স্মার্ট লজিস্টিক্স ও অ্যাক্সেসিবিলিটি ইন্টেলিজেন্স প্ল্যাটফর্ম',
     stats: {
       activeIncidents: 'সক্রিয় ঘটনাসমূহ',
@@ -742,7 +742,7 @@ export const translations: Record<Language, Translations> = {
       statesCovered: 'আওতাভুক্ত রাজ্য',
       live: 'লাইভ',
       sihTagline: 'SIH 2026 · উত্তর-পূর্ব পরিকাঠামো',
-      footer: 'NER লজিস্টিক্সAI · SIH 2026 · সুপাবেস + নেক্সট.জেএস + পোস্টজিআইএস চালিত',
+      footer: 'TerraSafe · SIH 2026 · সুপাবেস + নেক্সট.জেএস + পোস্টজিআইএস চালিত',
     },
     nav: {
       map: 'জিআইএস মানচিত্র',
@@ -915,7 +915,7 @@ export const translations: Record<Language, Translations> = {
   },
 
   mni: {
-    appName: 'NER লগিস্টিক্সAI',
+    appName: 'TerraSafe',
     appSubtitle: 'মণিপুৰ অমসুং উত্তৰ-পূৰ্বাঞ্চলগী স্মাৰ্ট লগিস্টিক্স প্লেটফৰ্ম',
     stats: {
       activeIncidents: 'চাল্লবা ওইনবাসিং',
@@ -924,7 +924,7 @@ export const translations: Record<Language, Translations> = {
       statesCovered: 'কোনশিল্লিবা ৰাজ্যশিং',
       live: 'লাইভ',
       sihTagline: 'SIH 2026 · অৱাং নোংপোক ইনফ্রাস্ট্রাকচার',
-      footer: 'NER লগিস্টিক্সAI · SIH 2026 · সুপাবেস + নেক্সট.জেএস + পোস্টজিআইএস',
+      footer: 'TerraSafe · SIH 2026 · সুপাবেস + নেক্সট.জেএস + পোস্টজিআইএস',
     },
     nav: {
       map: 'জিআইএস মেপ',
